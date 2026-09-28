@@ -1,6 +1,6 @@
 # VBA-UserForm-Z-Order-Tracer
 :jp:[日本語の説明はこちら](https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer/blob/main/README_ja.md)<br><br>
-A VBA library for retrieving the Z-order (stacking order) of UserForm controls.
+A VBA library for getting the Z-order (stacking order) of UserForm controls.
 
 ## Usage
 Add `UF_Z_Order_Tracer.bas` to your VBA project and retrieve the Z-order of controls as shown below:
