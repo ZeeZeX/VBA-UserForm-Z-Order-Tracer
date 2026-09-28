@@ -2,7 +2,7 @@ Attribute VB_Name = "UF_Z_Order_Tracer"
 Option Explicit
 
 ' ============================================================================
-' VBA-UserForm-Z-Order-Tracer v1.0.1
+' VBA-UserForm-Z-Order-Tracer v1.0.2
 ' https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer
 ' Copyright (c) 2026 ZeeZeX
 ' License: MIT
@@ -49,7 +49,7 @@ Private Declare Function DispCallFunc Lib "oleaut32.dll" ( _
 
 
 
-Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
     ''
     ' Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First Search (DFS).
     '
@@ -71,11 +71,11 @@ Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserFor
         Err.Raise Number:=515, Description:="Invalid UserForm"
     End If
     TraceZOrderRecursive objUserForm, 1, "", result
-    Set RetrieveAllCtrlsInZOrderDfs = result
+    Set GetAllCtrlsInZOrder = result
     
 End Function
 
-Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
     ' Retrieves the 1-based Z-Order index of a specific control within its immediate parent container.
     '
     ' @param ctrl [In] The target control or UserForm object to locate.
@@ -90,21 +90,21 @@ Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
     Set root = GetUserFormObjectFromCtrl(ctrl)
     
     If ctrl Is root Then
-        RetrieveCtrlZOrderIndex = 0
+        GetCtrlZOrderIndex = 0
         Exit Function
     End If
     
-    Set ctrls = RetrieveAllCtrlsInZOrderDfs(root)
+    Set ctrls = GetAllCtrlsInZOrder(root)
     For Each item In ctrls
         If item(0) Is ctrl Then
             result = item(2)
             Exit For
         End If
     Next item
-    RetrieveCtrlZOrderIndex = result
+    GetCtrlZOrderIndex = result
 End Function
 
-Public Function RetrieveCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
     ' Retrieves the hierarchical Z-Order path string for a target control within a UserForm.
     '
     ' @param ctrl [In] The target control or UserForm object to query.
@@ -120,18 +120,18 @@ Public Function RetrieveCtrlZOrderHierarchy(ByVal ctrl As Object) As String
     Set root = GetUserFormObjectFromCtrl(ctrl)
     
     If ctrl Is root Then
-        RetrieveCtrlZOrderHierarchy = "0"
+        GetCtrlZOrderHierarchy = "0"
         Exit Function
     End If
     
-    Set ctrls = RetrieveAllCtrlsInZOrderDfs(root)
+    Set ctrls = GetAllCtrlsInZOrder(root)
     For Each item In ctrls
         If item(0) Is ctrl Then
             result = item(3)
             Exit For
         End If
     Next item
-    RetrieveCtrlZOrderHierarchy = result
+    GetCtrlZOrderHierarchy = result
 End Function
 
 Private Function GetDirectChildCtrls(ByVal parentCtrl As Object) As Collection

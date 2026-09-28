@@ -9,7 +9,7 @@
 Sub Test1()
     Dim coll As Collection
     Dim item As Variant
-    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
     For Each item In coll
         Debug.Print TypeName(item(0)), item(1), item(2), item(3), item(4)
     Next item
@@ -21,7 +21,7 @@ Sub Test2()
     Dim item As Variant
     Dim i
     i = 2
-    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
     Dim ws As Worksheet
     Set ws = ThisWorkbook.ActiveSheet
     ws.Cells.Clear
@@ -63,26 +63,26 @@ End Sub
 - 個別のコントロールのZオーダーを取得
 ```
 Sub Test3()
-    Debug.Print RetrieveCtrlZOrderIndex(UserForm1.CommandButton1)
-    Debug.Print RetrieveCtrlZOrderHierarchy(UserForm1.CommandButton1)
+    Debug.Print GetCtrlZOrderIndex(UserForm1.CommandButton1)
+    Debug.Print GetCtrlZOrderHierarchy(UserForm1.CommandButton1)
 End Sub
 ```
    > Note: 
    > - `UserForm1`および`UserForm1.CommandButton1`の部分は実際の対象のユーザーフォームまたはコントロールのオブジェクト名に変えて実行してください。
-   > - `RetrieveCtrlZOrderIndex`と`RetrieveCtrlZOrderHierarchy`は内部的に`RetrieveAllCtrlsInZOrderDfs`を使用しており呼び出すたびに一旦すべてのコントロールを取得しているためループ内で使用するとパフォーマンスが著しく低下します、ループで使用する必要がある場合は`RetrieveAllCtrlsInZOrderDfs`で取得した`Collection`内でループ処理を実行してください。
+   > - `GetCtrlZOrderIndex`と`GetCtrlZOrderHierarchy`は内部的に`GetAllCtrlsInZOrder`を使用しており呼び出すたびに一旦すべてのコントロールを取得しているためループ内で使用するとパフォーマンスが著しく低下します、ループで使用する必要がある場合は`GetAllCtrlsInZOrder`で取得した`Collection`内でループ処理を実行してください。
 
 ## 関数一覧
-[RetrieveAllCtrlsInZOrderDfs](#RetrieveAllCtrlsInZOrderDfs)  
-[RetrieveCtrlZOrderIndex](#RetrieveCtrlZOrderIndex)  
-[RetrieveCtrlZOrderHierarchy](#RetrieveCtrlZOrderHierarchy)  
+[GetAllCtrlsInZOrder](#GetAllCtrlsInZOrder)  
+[GetCtrlZOrderIndex](#GetCtrlZOrderIndex)  
+[GetCtrlZOrderHierarchy](#GetCtrlZOrderHierarchy)  
 
-### `RetrieveAllCtrlsInZOrderDfs`
+### `GetAllCtrlsInZOrder`
 
 深さ優先探索（DFS）を用いて、UserForm内のすべてのコントロールをZオーダー順に巡回・取得します。
 
 #### シグネチャ
 ```vba
-Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
 ```
 
 #### 引数
@@ -109,13 +109,13 @@ Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserFor
 
 ---
 
-### `RetrieveCtrlZOrderIndex`
+### `GetCtrlZOrderIndex`
 
 指定されたコントロールの、直近の親コンテナ内におけるZオーダーインデックス（1始まり）を取得します。
 
 #### シグネチャ
 ```vba
-Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
 ```
 
 #### 引数
@@ -131,13 +131,13 @@ Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
 
 ---
 
-### `RetrieveCtrlZOrderHierarchy`
+### `GetCtrlZOrderHierarchy`
 
 UserForm 内における対象コントロールの階層的なZオーダーパス文字列を取得します。
 
 #### シグネチャ
 ```vba
-Public Function RetrieveCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
 ```
 
 #### 引数

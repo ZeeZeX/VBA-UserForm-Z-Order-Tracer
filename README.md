@@ -9,7 +9,7 @@ Add `UF_Z_Order_Tracer.bas` to your VBA project and retrieve the Z-order of cont
 Sub Test1()
     Dim coll As Collection
     Dim item As Variant
-    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
     For Each item In coll
         Debug.Print TypeName(item(0)), item(1), item(2), item(3), item(4)
     Next item
@@ -21,7 +21,7 @@ Sub Test2()
     Dim item As Variant
     Dim i
     i = 2
-    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
     Dim ws As Worksheet
     Set ws = ThisWorkbook.ActiveSheet
     ws.Cells.Clear
@@ -63,8 +63,8 @@ End Sub
 - Retrieve the Z-order of individual controls
 ```
 Sub Test3()
-    Debug.Print RetrieveCtrlZOrderIndex(UserForm1.CommandButton1)
-    Debug.Print RetrieveCtrlZOrderHierarchy(UserForm1.CommandButton1)
+    Debug.Print GetCtrlZOrderIndex(UserForm1.CommandButton1)
+    Debug.Print GetCtrlZOrderHierarchy(UserForm1.CommandButton1)
 End Sub
 ```
 
@@ -72,20 +72,20 @@ End Sub
 >
 >-   Replace `UserForm1` and `UserForm1.CommandButton1` with your actual UserForm or control object names before running the code.
 >
->-   `RetrieveCtrlZOrderIndex` and `RetrieveCtrlZOrderHierarchy` internally use `RetrieveAllCtrlsInZOrderDfs`, fetching all controls every time they are called. Using them inside a loop will significantly decrease performance. If you need to process controls within a loop, please iterate over the `Collection` retrieved by `RetrieveAllCtrlsInZOrderDfs`.
+>-   `GetCtrlZOrderIndex` and `GetCtrlZOrderHierarchy` internally use `GetAllCtrlsInZOrder`, fetching all controls every time they are called. Using them inside a loop will significantly decrease performance. If you need to process controls within a loop, please iterate over the `Collection` retrieved by `GetAllCtrlsInZOrder`.
 
 ## Functions
-[RetrieveAllCtrlsInZOrderDfs](#RetrieveAllCtrlsInZOrderDfs)  
-[RetrieveCtrlZOrderIndex](#RetrieveCtrlZOrderIndex)  
-[RetrieveCtrlZOrderHierarchy](#RetrieveCtrlZOrderHierarchy)  
+[GetAllCtrlsInZOrder](#GetAllCtrlsInZOrder)  
+[GetCtrlZOrderIndex](#GetCtrlZOrderIndex)  
+[GetCtrlZOrderHierarchy](#GetCtrlZOrderHierarchy)  
 
-### `RetrieveAllCtrlsInZOrderDfs`
+### `GetAllCtrlsInZOrder`
 
 Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First Search (DFS).
 
 #### Signature
 ```vba
-Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
 ```
 
 #### Parameters
@@ -112,13 +112,13 @@ Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserFor
 
 ---
 
-### `RetrieveCtrlZOrderIndex`
+### `GetCtrlZOrderIndex`
 
 Retrieves the 1-based Z-Order index of a specific control within its immediate parent container.
 
 #### Signature
 ```vba
-Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
 ```
 
 #### Parameters
@@ -134,13 +134,13 @@ Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
 
 ---
 
-### `RetrieveCtrlZOrderHierarchy`
+### `GetCtrlZOrderHierarchy`
 
 Retrieves the hierarchical Z-Order path string for a target control within a UserForm.
 
 #### Signature
 ```vba
-Public Function RetrieveCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
 ```
 
 #### Parameters
