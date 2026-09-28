@@ -9,7 +9,7 @@
 Sub Test1()
     Dim coll As Collection
     Dim item As Variant
-    Set coll = RetrieveAllControlsInZOrderDfs(UserForm1)
+    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
     For Each item In coll
         Debug.Print TypeName(item(0)), item(1), item(2), item(3), item(4)
     Next item
@@ -21,7 +21,7 @@ Sub Test2()
     Dim item As Variant
     Dim i
     i = 2
-    Set coll = RetrieveAllControlsInZOrderDfs(UserForm1)
+    Set coll = RetrieveAllCtrlsInZOrderDfs(UserForm1)
     Dim ws As Worksheet
     Set ws = ThisWorkbook.ActiveSheet
     ws.Cells.Clear
@@ -30,18 +30,33 @@ Sub Test2()
     ws.Cells(1, 3) = "Z-Order Index"
     ws.Cells(1, 4) = "Z-Order Hierarchy"
     ws.Cells(1, 5) = "Depth"
-    ws.Cells(1, 6) = "Parent Type"
-    ws.Cells(1, 7) = "Parent Name"
+    ws.Cells(1, 6) = "Address"
+    ws.Cells(1, 7) = "Caption"
+    ws.Cells(1, 8) = "Parent Type"
+    ws.Cells(1, 9) = "Parent Name"
+    ws.Cells(1, 10) = "Parent Address"
+    ws.Cells(1, 11) = "Parent Caption"
+    Application.EnableEvents = False
     For Each item In coll
         ws.Cells(i, 1) = TypeName(item(0))
         ws.Cells(i, 2) = item(1)
         ws.Cells(i, 3) = item(2)
         ws.Cells(i, 4) = "'" & item(3)
         ws.Cells(i, 5) = item(4)
-        ws.Cells(i, 6) = TypeName(item(0).Parent)
-        ws.Cells(i, 7) = item(0).Parent.Name
+        ws.Cells(i, 6) = "0x" & Hex(ObjPtr(item(0)))
+
+        ws.Cells(i, 8) = TypeName(item(0).Parent)
+        ws.Cells(i, 9) = item(0).Parent.Name
+        ws.Cells(i, 10) = "0x" & Hex(ObjPtr(item(0).Parent))
+        
+        On Error Resume Next
+        ws.Cells(i, 7) = item(0).Caption
+        ws.Cells(i, 11) = item(0).Parent.Caption
+        On Error GoTo 0
+        
         i = i + 1
     Next item
+    Application.EnableEvents = True
     ws.Cells.EntireColumn.AutoFit
 End Sub
 ```
@@ -54,20 +69,20 @@ End Sub
 ```
    > Note: 
    > - `UserForm1`および`UserForm1.CommandButton1`の部分は実際の対象のユーザーフォームまたはコントロールのオブジェクト名に変えて実行してください。
-   > - `RetrieveCtrlZOrderIndex`と`RetrieveCtrlZOrderHierarchy`は内部的に`RetrieveAllControlsInZOrderDfs`を使用しており呼び出すたびに一旦すべてのコントロールを取得しているためループ内で使用するとパフォーマンスが著しく低下します、ループで使用する必要がある場合は`RetrieveAllControlsInZOrderDfs`で取得した`Collection`内でループ処理を実行してください。
+   > - `RetrieveCtrlZOrderIndex`と`RetrieveCtrlZOrderHierarchy`は内部的に`RetrieveAllCtrlsInZOrderDfs`を使用しており呼び出すたびに一旦すべてのコントロールを取得しているためループ内で使用するとパフォーマンスが著しく低下します、ループで使用する必要がある場合は`RetrieveAllCtrlsInZOrderDfs`で取得した`Collection`内でループ処理を実行してください。
 
 ## 関数一覧
-[RetrieveAllControlsInZOrderDfs](#RetrieveAllControlsInZOrderDfs)  
+[RetrieveAllCtrlsInZOrderDfs](#RetrieveAllCtrlsInZOrderDfs)  
 [RetrieveCtrlZOrderIndex](#RetrieveCtrlZOrderIndex)  
 [RetrieveCtrlZOrderHierarchy](#RetrieveCtrlZOrderHierarchy)  
 
-### `RetrieveAllControlsInZOrderDfs`
+### `RetrieveAllCtrlsInZOrderDfs`
 
 深さ優先探索（DFS）を用いて、UserForm内のすべてのコントロールをZオーダー順に巡回・取得します。
 
 #### シグネチャ
 ```vba
-Public Function RetrieveAllControlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
 ```
 
 #### 引数

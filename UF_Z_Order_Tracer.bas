@@ -2,7 +2,7 @@ Attribute VB_Name = "UF_Z_Order_Tracer"
 Option Explicit
 
 ' ============================================================================
-' VBA-UserForm-Z-Order-Tracer v1.0.0
+' VBA-UserForm-Z-Order-Tracer v1.0.1
 ' https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer
 ' Copyright (c) 2026 ZeeZeX
 ' License: MIT
@@ -49,7 +49,7 @@ Private Declare Function DispCallFunc Lib "oleaut32.dll" ( _
 
 
 
-Public Function RetrieveAllControlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function RetrieveAllCtrlsInZOrderDfs(ByVal objUserForm As MsForms.UserForm) As Collection
     ''
     ' Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First Search (DFS).
     '
@@ -71,7 +71,7 @@ Public Function RetrieveAllControlsInZOrderDfs(ByVal objUserForm As MsForms.User
         Err.Raise Number:=515, Description:="Invalid UserForm"
     End If
     TraceZOrderRecursive objUserForm, 1, "", result
-    Set RetrieveAllControlsInZOrderDfs = result
+    Set RetrieveAllCtrlsInZOrderDfs = result
     
 End Function
 
@@ -94,7 +94,7 @@ Public Function RetrieveCtrlZOrderIndex(ByVal ctrl As Object) As Long
         Exit Function
     End If
     
-    Set ctrls = RetrieveAllControlsInZOrderDfs(root)
+    Set ctrls = RetrieveAllCtrlsInZOrderDfs(root)
     For Each item In ctrls
         If item(0) Is ctrl Then
             result = item(2)
@@ -124,7 +124,7 @@ Public Function RetrieveCtrlZOrderHierarchy(ByVal ctrl As Object) As String
         Exit Function
     End If
     
-    Set ctrls = RetrieveAllControlsInZOrderDfs(root)
+    Set ctrls = RetrieveAllCtrlsInZOrderDfs(root)
     For Each item In ctrls
         If item(0) Is ctrl Then
             result = item(3)
@@ -273,7 +273,12 @@ Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Lo
                 Call dcf(pElements(i), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkReal))
                 
                 ' Match with controls in the current container
-                Dim c As MsForms.Control
+                Dim c As Object
+                ' Always declare variable c as Object or Variant.
+                ' Declaring it as MsForms.Control may cause some properties of the retrieved control to behave incorrectly.
+                ' For example, the Caption property of a Page control is retrieved correctly when c is declared as Object,
+                ' but returns an empty string when c is declared as MsForms.Control.
+
                 For Each c In children
                     Dim pUnkCtrl As LongPtr
                     Call dcf(ObjPtr(c), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkCtrl))
@@ -299,7 +304,7 @@ Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Lo
                     resultColl.Add VBA.Array(foundObj, foundName, zOrderIndex, zOrderHierarchy, depth)
                 End If
                 
-                ' If the found item is a Frame/MultiPage/Page/UserForm, scan inside it recursively
+                ' If the found item is a container control(Frame/MultiPage/Page/UserForm), scan inside it recursively
                 If Not foundObj Is Nothing Then
                     If IsContainerCtrl(foundObj) Then
                         TraceZOrderRecursive foundObj, depth + 1, zOrderHierarchy, resultColl
