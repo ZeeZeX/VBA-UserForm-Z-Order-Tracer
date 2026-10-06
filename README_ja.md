@@ -9,7 +9,7 @@
 Sub Test1()
     Dim coll As Collection
     Dim item As Variant
-    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1, zOrderType:="Internal")
     For Each item In coll
         Debug.Print TypeName(item(0)), item(1), item(2), item(3), item(4)
     Next item
@@ -21,7 +21,7 @@ Sub Test2()
     Dim item As Variant
     Dim i
     i = 2
-    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1, zOrderType:="Internal")
     Dim ws As Worksheet
     Set ws = ThisWorkbook.ActiveSheet
     ws.Cells.Clear
@@ -67,9 +67,22 @@ Sub Test3()
     Debug.Print GetCtrlZOrderHierarchy(UserForm1.CommandButton1)
 End Sub
 ```
+```
+Sub Test4()
+    Dim coll As Collection
+    Dim ctrl As Object
+    Dim key As String
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set ctrl = UserForm1.CommandButton1
+    key = Hex(ObjPtr(ctrl))
+    Debug.Print coll(key)(2)
+    Debug.Print coll(key)(3)
+End Sub
+```
+
    > Note: 
    > - `UserForm1`および`UserForm1.CommandButton1`の部分は実際の対象のユーザーフォームまたはコントロールのオブジェクト名に変えて実行してください。
-   > - `GetCtrlZOrderIndex`と`GetCtrlZOrderHierarchy`は内部的に`GetAllCtrlsInZOrder`を使用しており呼び出すたびに一旦すべてのコントロールを取得しているためループ内で使用するとパフォーマンスが著しく低下します、ループで使用する必要がある場合は`GetAllCtrlsInZOrder`で取得した`Collection`内でループ処理を実行してください。
+   > - `GetCtrlZOrderIndex` および `GetCtrlZOrderHierarchy` は内部的に `GetAllCtrlsInZOrder` を使用しており、呼び出されるたびにすべてのコントロールを取得します。そのため、ループ内で使用するとパフォーマンスが著しく低下します。ループ内でコントロールを処理する必要がある場合は、あらかじめ `GetAllCtrlsInZOrder` で `Collection` を一度だけ取得し、`Hex(ObjPtr(ctrl))` をキーとして参照（例：`coll(Hex(ObjPtr(UserForm1.CommandButton1)))`）してください。
 
 ## 関数一覧
 [GetAllCtrlsInZOrder](#GetAllCtrlsInZOrder)  
@@ -82,13 +95,14 @@ End Sub
 
 #### シグネチャ
 ```vba
-Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm, Optional ByVal zOrderType As String = "Internal") As Collection
 ```
 
 #### 引数
 | 引数名 | 型 | 説明 |
 | :--- | :--- | :--- |
 | `objUserForm` | `MSForms.UserForm` | スキャン対象となるトップレベルの UserForm オブジェクト。 |
+| `zOrderType` | `String` | （省略可能）MultiPage 内の Page コントロールに対する Z オーダーの評価方法を指定します。デフォルトは `"Internal"` です。<br>•`"Internal"`: MultiPage 内の Page コントロールに対して内部的な Z オーダーの取得を優先します。見た目のページ順序が移動されている場合でも、追加された順番で取得されます。<br>•`"Visual"`: 見た目のタブ順序を優先し、左側のタブから順に Z オーダーを割り当てます。ページの並べ替えが反映されます。<br>•`"VisualKeepZ"`: `"Internal"` と同じ Z オーダー値を保持しつつ、返されるコレクションを `"Visual"` と同じ順序にソートします。 |
 
 #### 戻り値
 - **型**: `Collection`
@@ -102,10 +116,16 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Co
 | `3` | `String` | 階層的なZオーダー文字列（例: `"1-2-1"`） |
 | `4` | `Long` | ネストの深さレベル（ルート直下を `1` とする） |
 
+>Note:
+>返されるコレクション内のアイテムは、`Hex(ObjPtr(ctrl))` をキーとして取得できます。
+>コントロールを保持する変数には、`MSForms.Control` や特定のコントロール型ではなく、`Object` または `Variant` として宣言してください。`MSForms.Control` に代入すると、`ObjPtr` が異なるポインタアドレスを返す場合があります。（このポインタの不一致は、特に MultiPage 内の Page コントロールで確認されています）
+
+
 #### エラー
 | エラーコード | 説明 |
 | :---: | :--- |
 | `515` | 渡されたオブジェクトがトップレベル（ルート）の UserForm ではない場合に発生します。 |
+| `516` | 無効またはサポートされていない `zOrderType` 文字列が指定された場合に発生します。 |
 
 ---
 
@@ -115,19 +135,25 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Co
 
 #### シグネチャ
 ```vba
-Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As Long
 ```
 
 #### 引数
 | 引数名 | 型 | 説明 |
 | :--- | :--- | :--- |
 | `ctrl` | `Object` | 照会対象となるコントロールまたは UserForm オブジェクト。 |
+| `zOrderType` | `String` | （省略可能）MultiPage 内の Page コントロールに対する Z オーダーの評価方法を指定します。デフォルトは `"Internal"` です。<br>•`"Internal"`: MultiPage 内の Page コントロールに対して内部的な Z オーダーの取得を優先します。見た目のページ順序が移動されている場合でも、追加された順番で取得されます。<br>•`"Visual"`: 見た目のタブ順序を優先し、左側のタブから順に Z オーダーを割り当てます。ページの並べ替えが反映されます。|
 
 #### 戻り値
 - **型**: `Long`
 - **説明**: 親コンテナ内における 1始まり のZオーダーインデックス。
   - 指定されたオブジェクト自体がトップレベルの UserForm である場合は `0` を返します。
   - コントロールが見つからない場合は `-1` を返します。
+
+#### エラー
+| エラーコード | 説明 |
+| :---: | :--- |
+| `516` | 無効またはサポートされていない `zOrderType` 文字列が指定された場合に発生します。 |
 
 ---
 
@@ -137,13 +163,14 @@ UserForm 内における対象コントロールの階層的なZオーダーパ�
 
 #### シグネチャ
 ```vba
-Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As String
 ```
 
 #### 引数
 | 引数名 | 型 | 説明 |
 | :--- | :--- | :--- |
 | `ctrl` | `Object` | 照会対象となるコントロールまたは UserForm オブジェクト。 |
+| `zOrderType` | `String` | （省略可能）MultiPage 内の Page コントロールに対する Z オーダーの評価方法を指定します。デフォルトは `"Internal"` です。<br>•`"Internal"`: MultiPage 内の Page コントロールに対して内部的な Z オーダーの取得を優先します。見た目のページ順序が移動されている場合でも、追加された順番で取得されます。<br>•`"Visual"`: 見た目のタブ順序を優先し、左側のタブから順に Z オーダーを割り当てます。ページの並べ替えが反映されます。|
 
 #### 戻り値
 - **型**: `String`
@@ -151,5 +178,11 @@ Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
   - 指定されたオブジェクト自体がトップレベルの UserForm である場合は `"0"` を返します。
   - コントロールが見つからない場合は 空文字 (`""`) を返します。
 
-## 謝辞
-本プロジェクトは [https://github.com/tarboh/VBA-UserForm-Z-Order-Tool](https://github.com/tarboh/VBA-UserForm-Z-Order-Tool) のフォークです。元の開発者およびコントリビューターに感謝いたします。
+#### エラー
+| エラーコード | 説明 |
+| :---: | :--- |
+| `516` | 無効またはサポートされていない `zOrderType` 文字列が指定された場合に発生します。 |
+
+## クレジット
+
+本プロジェクトはtarboh氏の[VBA-UserForm-Z-Order-Tool](https://github.com/tarboh/VBA-UserForm-Z-Order-Tool) をベースに大幅な拡張・変更を加えたものです。

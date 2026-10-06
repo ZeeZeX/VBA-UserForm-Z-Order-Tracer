@@ -9,7 +9,7 @@ Add `UF_Z_Order_Tracer.bas` to your VBA project and retrieve the Z-order of cont
 Sub Test1()
     Dim coll As Collection
     Dim item As Variant
-    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1, zOrderType:="Internal")
     For Each item In coll
         Debug.Print TypeName(item(0)), item(1), item(2), item(3), item(4)
     Next item
@@ -21,7 +21,7 @@ Sub Test2()
     Dim item As Variant
     Dim i
     i = 2
-    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set coll = GetAllCtrlsInZOrder(UserForm1, zOrderType:="Internal")
     Dim ws As Worksheet
     Set ws = ThisWorkbook.ActiveSheet
     ws.Cells.Clear
@@ -67,12 +67,24 @@ Sub Test3()
     Debug.Print GetCtrlZOrderHierarchy(UserForm1.CommandButton1)
 End Sub
 ```
+```
+Sub Test4()
+    Dim coll As Collection
+    Dim ctrl As Object
+    Dim key As String
+    Set coll = GetAllCtrlsInZOrder(UserForm1)
+    Set ctrl = UserForm1.CommandButton1
+    key = Hex(ObjPtr(ctrl))
+    Debug.Print coll(key)(2)
+    Debug.Print coll(key)(3)
+End Sub
+```
 
 >Note:
 >
 >-   Replace `UserForm1` and `UserForm1.CommandButton1` with your actual UserForm or control object names before running the code.
 >
->-   `GetCtrlZOrderIndex` and `GetCtrlZOrderHierarchy` internally use `GetAllCtrlsInZOrder`, fetching all controls every time they are called. Using them inside a loop will significantly decrease performance. If you need to process controls within a loop, please iterate over the `Collection` retrieved by `GetAllCtrlsInZOrder`.
+>-   `GetCtrlZOrderIndex` and `GetCtrlZOrderHierarchy` internally use `GetAllCtrlsInZOrder`, fetching all controls every time they are called. Using them inside a loop will significantly decrease performance. If you need to process controls within a loop, fetch the `Collection` once beforehand using `GetAllCtrlsInZOrder` and retrieve items using `Hex(ObjPtr(ctrl))` as the key (e.g., `coll(Hex(ObjPtr(UserForm1.CommandButton1)))`).
 
 ## Functions
 [GetAllCtrlsInZOrder](#GetAllCtrlsInZOrder)  
@@ -85,13 +97,14 @@ Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First 
 
 #### Signature
 ```vba
-Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm, Optional ByVal zOrderType As String = "Internal") As Collection
 ```
 
 #### Parameters
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `objUserForm` | `MSForms.UserForm` | The target UserForm object to scan. |
+| `zOrderType` | `String` | Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage. Default is `"Internal"`. <br>•`"Internal"`: Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage. Controls are retrieved in addition order, even if the visual page order has been moved.<br>•`"Visual"`:   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab. Reflects any reordering of pages.<br>•`"VisualKeepZ"`: Retrieves Z-Order values identical to `"Internal"`, but sorts the resulting collection in the same order as `"Visual"`.|
 
 #### Return Value
 - **Type**: `Collection`
@@ -105,10 +118,15 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Co
 | `3` | `String` | Hierarchical Z-Order path string (e.g., `"1-2-1"`). |
 | `4` | `Long` | Nesting depth level starting from `1`. |
 
+>Note:
+>Items in the returned collection can be retrieved by key using `Hex(ObjPtr(ctrl))`.
+>Variables holding controls should be declared as `Object` or `Variant` instead of `MSForms.Control` or specific control types, as assigning to `MSForms.Control` may cause `ObjPtr` to return a different pointer address. (this pointer mismatch has been specifically confirmed with Page controls within a MultiPage)
+
 #### Errors Raised
 | Error Code | Description |
 | :---: | :--- |
 | `515` | Thrown if the provided object is not the top-level (root) UserForm. |
+| `516` | Thrown if an invalid or unsupported zOrderType string is specified. |
 
 ---
 
@@ -118,19 +136,25 @@ Retrieves the 1-based Z-Order index of a specific control within its immediate p
 
 #### Signature
 ```vba
-Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As Long
 ```
 
 #### Parameters
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `ctrl` | `Object` | The target control or UserForm object to query. |
+| `zOrderType` | `String` | Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage. Default is `"Internal"`. <br>•`"Internal"`: Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage. Controls are retrieved in addition order, even if the visual page order has been moved.<br>•`"Visual"`:   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab. Reflects any reordering of pages. |
 
 #### Return Value
 - **Type**: `Long`
 - **Description**: The 1-based Z-Order index of the control within its parent container.
   - Returns `0` if the provided object is the top-level UserForm itself.
   - Returns `-1` if the control is not found.
+
+#### Errors Raised
+| Error Code | Description |
+| :---: | :--- |
+| `516` | Thrown if an invalid or unsupported zOrderType string is specified. |
 
 ---
 
@@ -140,13 +164,14 @@ Retrieves the hierarchical Z-Order path string for a target control within a Use
 
 #### Signature
 ```vba
-Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As String
 ```
 
 #### Parameters
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `ctrl` | `Object` | The target control or UserForm object to query. |
+| `zOrderType` | `String` | Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage. Default is `"Internal"`. <br>•`"Internal"`: Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage. Controls are retrieved in addition order, even if the visual page order has been moved.<br>•`"Visual"`:   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab. Reflects any reordering of pages. |
 
 #### Return Value
 - **Type**: `String`
@@ -154,5 +179,12 @@ Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
   - Returns `"0"` if the provided object is the top-level UserForm itself.
   - Returns an empty string (`""`) if the control is not found.
 
-## Acknowledgements
-This project is a fork of [https://github.com/tarboh/VBA-UserForm-Z-Order-Tool](https://github.com/tarboh/VBA-UserForm-Z-Order-Tool). Special thanks to the original authors and contributors.
+#### Errors Raised
+| Error Code | Description |
+| :---: | :--- |
+| `516` | Thrown if an invalid or unsupported zOrderType string is specified. |
+
+
+## Credits
+
+This project is an extensively modified/extended version of tarboh's [VBA-UserForm-Z-Order-Tool](https://github.com/tarboh/VBA-UserForm-Z-Order-Tool)

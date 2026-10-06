@@ -1,19 +1,19 @@
 Attribute VB_Name = "UF_Z_Order_Tracer"
 Option Explicit
 
-' ============================================================================
-' VBA-UserForm-Z-Order-Tracer v1.0.2
+' ========================================================================================
+' VBA-UserForm-Z-Order-Tracer v1.0.3
 ' https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer
 ' Copyright (c) 2026 ZeeZeX
 ' License: MIT
 '
-' Forked from VBA-UserForm-Z-Order-Tool
+' Based originally on tarboh's VBA-UserForm-Z-Order-Tool with extensive changes/additions
 ' https://github.com/tarboh/VBA-UserForm-Z-Order-Tool
 ' Copyright (c) 2026 tarboh
 ' License: MIT
 '
 ' https://opensource.org/licenses/MIT
-' ============================================================================
+' ========================================================================================
 
 #If VBA7 = 0 Then
     ' Define a placeholder LongPtr type for VBA6 or earlier.
@@ -49,11 +49,19 @@ Private Declare Function DispCallFunc Lib "oleaut32.dll" ( _
 
 
 
-Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optional ByVal zOrderType As String = "Internal") As Collection
     ''
     ' Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First Search (DFS).
     '
     ' @param objUserForm [In] The target UserForm object (MsForms.UserForm) to scan.
+    ' @param zOrderType  [In] Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage.
+    '                         Default is "Internal".
+    '                           - "Internal": Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage.
+    '                                         Controls are retrieved in addition order, even if the visual page order has been moved.
+    '                           - "Visual":   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab.
+    '                                         Reflects any reordering of pages.
+    '                           - "VisualKeepZ": Retrieves Z-Order values identical to "Internal", but sorts the resulting collection
+    '                                            in the same order as "Visual".
     ' @return Collection A Collection containing Variant arrays for each control found.
     '                     Each array element consists of:
     '                       (0): Control object (Object)
@@ -62,31 +70,91 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm) As Co
     '                       (3): Hierarchical Z-Order string (e.g., "1-2-1") (String)
     '                       (4): Nesting depth level starting from 1 (Long)
     '
+    '                     Items in the returned collection can be retrieved by key using `Hex(ObjPtr(ctrl))`.
+    '                     Note: Variables holding controls should be declared as `Object` or `Variant` instead of
+    '                     `MSForms.Control` or specific control types, as assigning to `MSForms.Control` may
+    '                     cause `ObjPtr` to return a different pointer address. (this pointer mismatch has been
+    '                     specifically confirmed with Page controls within a MultiPage)
+    '
     ' @raises 515 Thrown if the provided object is not the top-level (root) UserForm.
+    ' @raises 516 Thrown if an invalid or unsupported zOrderType string is specified.
     ''
     Dim result As Collection
+    Dim ctrlsInternalOrder As Collection
+    Dim ctrlsVisialOrder As Collection
+    Dim item As Variant
+    Dim arr() As Variant
+    Dim arr2() As Variant
+    Dim key As String
+    Const q = """"
+    Dim errMsg As String
     Set result = New Collection
     ' Raise an error if the passed object is not the root UserForm.
     If Not objUserForm Is GetUserFormObjectFromCtrl(objUserForm) Then
         Err.Raise Number:=515, Description:="Invalid UserForm"
     End If
-    TraceZOrderRecursive objUserForm, 1, "", result
+    
+    Select Case UCase$(Trim$(zOrderType))
+    
+        Case "INTERNAL"
+            TraceZOrderRecursive objUserForm, 1, "", result, useVisualOrder:=False
+            
+        Case "VISUAL"
+            TraceZOrderRecursive objUserForm, 1, "", result, useVisualOrder:=True
+            
+        Case "VISUALKEEPZ"
+            Set ctrlsInternalOrder = New Collection
+            Set ctrlsVisialOrder = New Collection
+            TraceZOrderRecursive objUserForm, 1, "", ctrlsInternalOrder, useVisualOrder:=False
+            TraceZOrderRecursive objUserForm, 1, "", ctrlsVisialOrder, useVisualOrder:=True
+            
+            For Each item In ctrlsVisialOrder
+                key = Hex(ObjPtr(item(0)))
+                arr = item
+                arr2 = ctrlsInternalOrder(key)
+                arr(2) = arr2(2)
+                arr(3) = arr2(3)
+                result.Add arr, key
+            Next item
+            
+        Case Else
+            errMsg = "[zOrderType] Invalid value: " & q & zOrderType & q & vbLf & "Supported values are " & q & Join(Array("Internal", "Visual", "VisualkeepZ"), q & ", " & q) & q
+            Err.Raise Number:=516, Description:=errMsg
+    End Select
+    
     Set GetAllCtrlsInZOrder = result
     
 End Function
 
-Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
+Public Function GetCtrlZOrderIndex(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As Long
     ' Retrieves the 1-based Z-Order index of a specific control within its immediate parent container.
     '
     ' @param ctrl [In] The target control or UserForm object to locate.
+    ' @param zOrderType  [In] Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage.
+    '                         Default is "Internal".
+    '                           - "Internal": Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage.
+    '                                         Controls are retrieved in addition order, even if the visual page order has been moved.
+    '                           - "Visual":   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab.
+    '                                         Reflects any reordering of pages.
     ' @return Long The 1-based Z-Order index of the control within its parent container.
     '              Returns 0 if the provided object is the top-level UserForm itself.
     '              Returns -1 if the control is not found.
+    '
+    ' @raises 516 Thrown if an invalid or unsupported zOrderType string is specified.
     Dim result As Long
+    Dim key As String
     result = -1
     Dim ctrls As Collection
     Dim item As Variant
     Dim root As Object
+    Const q = """"
+    Dim errMsg As String
+    
+    If UCase$(Trim$(zOrderType)) <> "INTERNAL" And UCase$(Trim$(zOrderType)) <> "VISUAL" Then
+        errMsg = "[zOrderType] Invalid value: " & q & zOrderType & q & vbLf & "Supported values are " & q & Join(Array("Internal", "Visual"), q & ", " & q) & q
+        Err.Raise Number:=516, Description:=errMsg
+    End If
+    
     Set root = GetUserFormObjectFromCtrl(ctrl)
     
     If ctrl Is root Then
@@ -94,29 +162,56 @@ Public Function GetCtrlZOrderIndex(ByVal ctrl As Object) As Long
         Exit Function
     End If
     
-    Set ctrls = GetAllCtrlsInZOrder(root)
-    For Each item In ctrls
-        If item(0) Is ctrl Then
-            result = item(2)
-            Exit For
-        End If
-    Next item
+    Set ctrls = GetAllCtrlsInZOrder(root, zOrderType)
+    key = Hex(ObjPtr(ctrl))
+    On Error Resume Next
+    result = ctrls(key)(2)
+    On Error GoTo 0
+    
+    ' Fall back to linear search using the `Is` operator if key retrieval fails.
+    ' This fallback is necessary because Page controls (inside a MultiPage) may yield different
+    ' ObjPtr values depending on whether they are typed as Object or MSForms.Control/Page.
+    If result = -1 Then
+        For Each item In ctrls
+            If item(0) Is ctrl Then
+                result = item(2)
+                Exit For
+            End If
+        Next item
+    End If
     GetCtrlZOrderIndex = result
 End Function
 
-Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
+Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object, Optional ByVal zOrderType As String = "Internal") As String
     ' Retrieves the hierarchical Z-Order path string for a target control within a UserForm.
     '
     ' @param ctrl [In] The target control or UserForm object to query.
+    ' @param zOrderType  [In] Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage.
+    '                         Default is "Internal".
+    '                           - "Internal": Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage.
+    '                                         Controls are retrieved in addition order, even if the visual page order has been moved.
+    '                           - "Visual":   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab.
+    '                                         Reflects any reordering of pages.
     ' @return String A hyphen-delimited string representing the full Z-Order path from top-level container
     '                down to the target control (e.g., "1-3-2").
     '                Returns "0" if the provided object is the top-level UserForm itself.
     '                Returns an empty string ("") if the control is not found.
+    '
+    ' @raises 516 Thrown if an invalid or unsupported zOrderType string is specified.
     Dim result As String
+    Dim key As String
     result = ""
     Dim ctrls As Collection
     Dim item As Variant
     Dim root As Object
+    Const q = """"
+    Dim errMsg As String
+    
+    If UCase$(Trim$(zOrderType)) <> "INTERNAL" And UCase$(Trim$(zOrderType)) <> "VISUAL" Then
+        errMsg = "[zOrderType] Invalid value: " & q & zOrderType & q & vbLf & "Supported values are " & q & Join(Array("Internal", "Visual"), q & ", " & q) & q
+        Err.Raise Number:=516, Description:=errMsg
+    End If
+    
     Set root = GetUserFormObjectFromCtrl(ctrl)
     
     If ctrl Is root Then
@@ -124,13 +219,23 @@ Public Function GetCtrlZOrderHierarchy(ByVal ctrl As Object) As String
         Exit Function
     End If
     
-    Set ctrls = GetAllCtrlsInZOrder(root)
-    For Each item In ctrls
-        If item(0) Is ctrl Then
-            result = item(3)
-            Exit For
-        End If
-    Next item
+    Set ctrls = GetAllCtrlsInZOrder(root, zOrderType)
+    key = Hex(ObjPtr(ctrl))
+    On Error Resume Next
+    result = ctrls(key)(3)
+    On Error GoTo 0
+    
+    ' Fall back to linear search using the `Is` operator if key retrieval fails.
+    ' This fallback is necessary because Page controls (inside a MultiPage) may yield different
+    ' ObjPtr values depending on whether they are typed as Object or MSForms.Control/Page.
+    If result = "" Then
+        For Each item In ctrls
+            If item(0) Is ctrl Then
+                result = item(3)
+                Exit For
+            End If
+        Next item
+    End If
     GetCtrlZOrderHierarchy = result
 End Function
 
@@ -211,7 +316,7 @@ End Function
 
 ' IID_IOleContainer: {0000011B-0000-0000-C000-000000000046}
 ' IID_IEnumUnknown:  {00000100-0000-0000-C000-000000000046}
-Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Long, ByVal currentHierarchy As String, ByRef resultColl As Collection)
+Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Long, ByVal currentHierarchy As String, ByRef resultColl As Collection, ByVal useVisualOrder As Boolean)
     ' Internal recursive subroutine that enumerates child controls of a container via COM interfaces
     ' (IOleContainer and IEnumObjects) to accurately determine Z-Order precedence.
     '
@@ -219,7 +324,8 @@ Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Lo
     ' @param depth             [In]     Current recursion depth level (1-based).
     ' @param currentHierarchy  [In]     Hierarchical Z-Order string of the parent container (e.g., "1-2").
     ' @param resultColl        [In/Out] Target Collection to populate with control metadata.
-
+    ' @param useVisualOrder    [In]     If True, enumerates Page controls within a MultiPage based on their visual
+    '                                   tab position rather than internal COM Z-Order.
     Dim pUnk As LongPtr: pUnk = ObjPtr(objContainer)
     Dim pContainer As LongPtr, pEnum As LongPtr
     Dim hr As Long
@@ -262,60 +368,81 @@ Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Lo
         ' This avoids skipping indices (e.g., "2-2" instead of "2-1") when IOleContainer
         ' returns internal non-control COM objects at the beginning (such as in MultiPage).
         validCount = 0
-        For i = 0 To fetchedCount - 1
-            If pElements(i) <> 0 Then
-                Dim foundName As String: foundName = "Unknown"
-                Dim foundObj As Object: Set foundObj = Nothing
-                
-                ' Normalize IUnknown (for comparison)
-                Dim pUnkReal As LongPtr
-                Dim iidUnk(3) As Long: iidUnk(0) = &H0: iidUnk(1) = 0: iidUnk(2) = &HC0: iidUnk(3) = &H46000000
-                Call dcf(pElements(i), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkReal))
-                
-                ' Match with controls in the current container
-                Dim c As Object
-                ' Always declare variable c as Object or Variant.
-                ' Declaring it as MsForms.Control may cause some properties of the retrieved control to behave incorrectly.
-                ' For example, the Caption property of a Page control is retrieved correctly when c is declared as Object,
-                ' but returns an empty string when c is declared as MsForms.Control.
-
-                For Each c In children
-                    Dim pUnkCtrl As LongPtr
-                    Call dcf(ObjPtr(c), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkCtrl))
+        
+        Dim c As Object
+        ' Always declare variable c as Object or Variant.
+        ' Declaring it as MsForms.Control may cause some properties of the retrieved control to behave incorrectly.
+        ' For example, the Caption property of a Page control is retrieved correctly when c is declared as Object,
+        ' but returns an empty string when c is declared as MsForms.Control.
+        
+        If TypeName(objContainer) = "MultiPage" And useVisualOrder Then
+            For Each c In children
+                validCount = validCount + 1
+                zOrderIndex = validCount
+                If currentHierarchy = "" Then
+                    zOrderHierarchy = CStr(zOrderIndex)
+                Else
+                    zOrderHierarchy = currentHierarchy & "-" & CStr(zOrderIndex)
+                End If
+                resultColl.Add VBA.Array(c, c.Name, zOrderIndex, zOrderHierarchy, depth), Hex(ObjPtr(c))
+            
+                If IsContainerCtrl(c) Then
+                    TraceZOrderRecursive c, depth + 1, zOrderHierarchy, resultColl, useVisualOrder
+                End If
+            
+            Next c
+                        
+        Else
+            For i = 0 To fetchedCount - 1
+                If pElements(i) <> 0 Then
+                    Dim foundName As String: foundName = "Unknown"
+                    Dim foundObj As Object: Set foundObj = Nothing
                     
-                    If pUnkReal = pUnkCtrl Then
-                        foundName = c.Name
-                        foundType = TypeName(c)
-                        Set foundObj = c
+                    ' Normalize IUnknown (for comparison)
+                    Dim pUnkReal As LongPtr
+                    Dim iidUnk(3) As Long: iidUnk(0) = &H0: iidUnk(1) = 0: iidUnk(2) = &HC0: iidUnk(3) = &H46000000
+                    Call dcf(pElements(i), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkReal))
+                    
+                    ' Match with controls in the current container
+    
+                    For Each c In children
+                        Dim pUnkCtrl As LongPtr
+                        Call dcf(ObjPtr(c), 0, "QI", VarPtr(iidUnk(0)), VarPtr(pUnkCtrl))
+                        
+                        If pUnkReal = pUnkCtrl Then
+                            foundName = c.Name
+                            foundType = TypeName(c)
+                            Set foundObj = c
+                            Call dcf(pUnkCtrl, 2, "Release")
+                            Exit For
+                        End If
                         Call dcf(pUnkCtrl, 2, "Release")
-                        Exit For
+                    Next
+                    
+                    If foundType <> "" Then
+                        validCount = validCount + 1 ' Increment index only when a valid child control is matched
+                        zOrderIndex = validCount
+                        If currentHierarchy = "" Then
+                            zOrderHierarchy = CStr(zOrderIndex)
+                        Else
+                            zOrderHierarchy = currentHierarchy & "-" & CStr(zOrderIndex)
+                        End If
+                        resultColl.Add VBA.Array(foundObj, foundName, zOrderIndex, zOrderHierarchy, depth), Hex(ObjPtr(foundObj))
                     End If
-                    Call dcf(pUnkCtrl, 2, "Release")
-                Next
-                
-                If foundType <> "" Then
-                    validCount = validCount + 1 ' Increment index only when a valid child control is matched
-                    zOrderIndex = validCount
-                    If currentHierarchy = "" Then
-                        zOrderHierarchy = CStr(zOrderIndex)
-                    Else
-                        zOrderHierarchy = currentHierarchy & "-" & CStr(zOrderIndex)
+                    
+                    ' If the found item is a container control(Frame/MultiPage/Page/UserForm), scan inside it recursively
+                    If Not foundObj Is Nothing Then
+                        If IsContainerCtrl(foundObj) Then
+                            TraceZOrderRecursive foundObj, depth + 1, zOrderHierarchy, resultColl, useVisualOrder
+                        End If
                     End If
-                    resultColl.Add VBA.Array(foundObj, foundName, zOrderIndex, zOrderHierarchy, depth)
+                    
+                    ' Cleanup
+                    Call dcf(pUnkReal, 2, "Release")
+                    Call dcf(pElements(i), 2, "Release")
                 End If
-                
-                ' If the found item is a container control(Frame/MultiPage/Page/UserForm), scan inside it recursively
-                If Not foundObj Is Nothing Then
-                    If IsContainerCtrl(foundObj) Then
-                        TraceZOrderRecursive foundObj, depth + 1, zOrderHierarchy, resultColl
-                    End If
-                End If
-                
-                ' Cleanup
-                Call dcf(pUnkReal, 2, "Release")
-                Call dcf(pElements(i), 2, "Release")
-            End If
-        Next
+            Next
+        End If
     End If
 
 CleanUp:
