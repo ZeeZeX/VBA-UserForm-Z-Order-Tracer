@@ -102,7 +102,8 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm, Optio
 | 引数名 | 型 | 説明 |
 | :--- | :--- | :--- |
 | `objUserForm` | `MSForms.UserForm` | スキャン対象となるトップレベルの UserForm オブジェクト。 |
-| `zOrderType` | `String` | （省略可能）MultiPage 内の Page コントロールに対する Z オーダーの評価方法を指定します。デフォルトは `"Internal"` です。<br>•`"Internal"`: MultiPage 内の Page コントロールに対して内部的な Z オーダーの取得を優先します。見た目のページ順序が移動されている場合でも、追加された順番で取得されます。<br>•`"Visual"`: 見た目のタブ順序を優先し、左側のタブから順に Z オーダーを割り当てます。ページの並べ替えが反映されます。<br>•`"VisualKeepZ"`: `"Internal"` と同じ Z オーダー値を保持しつつ、返されるコレクションを `"Visual"` と同じ順序にソートします。 |
+| `zOrderType` | `String` | （省略可能） MultiPage 内の Page コントロールに対する Z オーダーの評価方法を指定します。デフォルトは `"Internal"` です。<br>•`"Internal"`: MultiPage 内の Page コントロールに対して内部的な Z オーダーの取得を優先します。見た目のページ順序が移動されている場合でも、追加された順番で取得されます。<br>•`"Visual"`: 見た目のタブ順序を優先し、左側のタブから順に Z オーダーを割り当てます。ページの並べ替えが反映されます。<br>•`"VisualKeepZ"`: `"Internal"` と同じ Z オーダー値を保持しつつ、返されるコレクションを `"Visual"` と同じ順序にソートします。 |
+| `bfsSort` | `Boolean` | （省略可能） 返されるコレクションを幅優先順（BFS）にソートするかどうかを指定します。<br>`True`の場合コントロールをネストの深さに基づいて浅い順から深い順に並べ替え、同じ深さのコントロール間では元の順序を維持します。<br>デフォルトは `False`（深さ優先順）です。 |
 
 #### 戻り値
 - **型**: `Collection`

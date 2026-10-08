@@ -105,6 +105,7 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MsForms.UserForm, Optio
 | :--- | :--- | :--- |
 | `objUserForm` | `MSForms.UserForm` | The target UserForm object to scan. |
 | `zOrderType` | `String` | Optional mode to determine how Z-Order is evaluated for Page controls inside a MultiPage. Default is `"Internal"`. <br>•`"Internal"`: Prioritizes internal Z-Order retrieval for Page controls inside a MultiPage. Controls are retrieved in addition order, even if the visual page order has been moved.<br>•`"Visual"`:   Prioritizes visual tab order, assigning Z-Order sequentially starting from the left tab. Reflects any reordering of pages.<br>•`"VisualKeepZ"`: Retrieves Z-Order values identical to `"Internal"`, but sorts the resulting collection in the same order as `"Visual"`.|
+| `bfsSort` | `Boolean` | Optional flag to sort the returned collection in breadth-first order (BFS).<br> If `True`, controls are ordered by nesting depth, from shallowest to deepest, while preserving their original order within the same depth.<br> Default is `False` (depth-first order). |
 
 #### Return Value
 - **Type**: `Collection`

@@ -1,8 +1,7 @@
 Attribute VB_Name = "UF_Z_Order_Tracer"
-Option Explicit
 
 ' ========================================================================================
-' VBA-UserForm-Z-Order-Tracer v1.0.3
+' VBA-UserForm-Z-Order-Tracer v1.0.4
 ' https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer
 ' Copyright (c) 2026 ZeeZeX
 ' License: MIT
@@ -14,6 +13,8 @@ Option Explicit
 '
 ' https://opensource.org/licenses/MIT
 ' ========================================================================================
+
+Option Explicit
 
 #If VBA7 = 0 Then
     ' Define a placeholder LongPtr type for VBA6 or earlier.
@@ -49,7 +50,7 @@ Private Declare Function DispCallFunc Lib "oleaut32.dll" ( _
 
 
 
-Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optional ByVal zOrderType As String = "Internal") As Collection
+Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optional ByVal zOrderType As String = "Internal", Optional bfsSort As Boolean = False) As Collection
     ''
     ' Traverses and retrieves all controls in a UserForm in Z-Order using Depth-First Search (DFS).
     '
@@ -62,6 +63,12 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
     '                                         Reflects any reordering of pages.
     '                           - "VisualKeepZ": Retrieves Z-Order values identical to "Internal", but sorts the resulting collection
     '                                            in the same order as "Visual".
+    '
+    ' @param bfsSort     [In] Optional flag to sort the returned collection in breadth-first order (BFS).
+    '                             If True, controls are ordered by nesting depth, from shallowest to deepest,
+    '                             while preserving their original order within the same depth.
+    '                             Default is False (depth-first order).
+    '
     ' @return Collection A Collection containing Variant arrays for each control found.
     '                     Each array element consists of:
     '                       (0): Control object (Object)
@@ -86,6 +93,11 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
     Dim arr() As Variant
     Dim arr2() As Variant
     Dim key As String
+    Dim tempColl As New Collection
+    Dim tempColl2 As Collection
+    Dim maxDepth As Long
+    Dim depth As Long
+    Dim i As Long
     Const q = """"
     Dim errMsg As String
     Set result = New Collection
@@ -121,6 +133,34 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
             errMsg = "[zOrderType] Invalid value: " & q & zOrderType & q & vbLf & "Supported values are " & q & Join(Array("Internal", "Visual", "VisualkeepZ"), q & ", " & q) & q
             Err.Raise Number:=516, Description:=errMsg
     End Select
+    
+    If bfsSort Then
+        maxDepth = 0
+        For Each item In result
+            depth = item(4)
+            If depth > maxDepth Then
+                maxDepth = depth
+            End If
+            key = "key" & CStr(depth)
+            On Error Resume Next
+            tempColl.Add New Collection, key
+            On Error GoTo 0
+            tempColl(key).Add item
+        Next
+        Set result = New Collection
+        For i = 1 To maxDepth
+            key = "key" & CStr(i)
+            Set tempColl2 = Nothing
+            On Error Resume Next
+            Set tempColl2 = tempColl(key)
+            On Error GoTo 0
+            If Not tempColl2 Is Nothing Then
+                For Each item In tempColl2
+                    result.Add item, Hex(ObjPtr(item(0)))
+                Next
+            End If
+        Next i
+    End If
     
     Set GetAllCtrlsInZOrder = result
     
@@ -394,6 +434,7 @@ Private Sub TraceZOrderRecursive(ByVal objContainer As Object, ByVal depth As Lo
                         
         Else
             For i = 0 To fetchedCount - 1
+                foundType = ""
                 If pElements(i) <> 0 Then
                     Dim foundName As String: foundName = "Unknown"
                     Dim foundObj As Object: Set foundObj = Nothing
