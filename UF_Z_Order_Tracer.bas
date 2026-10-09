@@ -1,7 +1,7 @@
 Attribute VB_Name = "UF_Z_Order_Tracer"
 
 ' ========================================================================================
-' VBA-UserForm-Z-Order-Tracer v1.0.4
+' VBA-UserForm-Z-Order-Tracer v1.0.5
 ' https://github.com/ZeeZeX/VBA-UserForm-Z-Order-Tracer
 ' Copyright (c) 2026 ZeeZeX
 ' License: MIT
@@ -96,6 +96,7 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
     Dim tempColl As New Collection
     Dim tempColl2 As Collection
     Dim maxDepth As Long
+    Dim minDepth As Long
     Dim depth As Long
     Dim i As Long
     Const q = """"
@@ -136,11 +137,17 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
     
     If bfsSort Then
         maxDepth = 0
+        minDepth = 2147483647
         For Each item In result
             depth = item(4)
             If depth > maxDepth Then
                 maxDepth = depth
             End If
+            
+            If minDepth > depth Then
+                minDepth = depth
+            End If
+            
             key = "key" & CStr(depth)
             On Error Resume Next
             tempColl.Add New Collection, key
@@ -148,7 +155,7 @@ Public Function GetAllCtrlsInZOrder(ByVal objUserForm As MSForms.UserForm, Optio
             tempColl(key).Add item
         Next
         Set result = New Collection
-        For i = 1 To maxDepth
+        For i = minDepth To maxDepth
             key = "key" & CStr(i)
             Set tempColl2 = Nothing
             On Error Resume Next
